@@ -56,6 +56,23 @@ function upsertMeta(document, selector, attrs) {
   document.head.appendChild(tag);
 }
 
+// Favicons y webmanifest, servidos desde la raíz del deploy (ver public/ y esbuild.config.mjs).
+// Rutas absolutas a propósito: estas etiquetas solo existen en el HTML que sirve Vercel; cuando
+// el bundle se monta en un host, el <head> es suyo y el favicon lo pone él.
+const ICONS = [
+  { rel: 'icon', type: 'image/png', href: '/favicon-96x96.png', sizes: '96x96' },
+  { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+  { rel: 'shortcut icon', href: '/favicon.ico' },
+  { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+  { rel: 'manifest', href: '/site.webmanifest' },
+];
+
+function injectIcons(document) {
+  for (const attrs of ICONS) {
+    upsertMeta(document, `link[rel="${attrs.rel}"][href="${attrs.href}"]`, attrs);
+  }
+}
+
 // El canonical apunta al dominio público aunque la página se sirva desde otro lado: es lo que
 // evita que el deploy compita con el sitio real por contenido duplicado.
 function injectHead(document, copy, url, lang) {
@@ -77,6 +94,8 @@ function injectHead(document, copy, url, lang) {
   upsertMeta(document, 'meta[name="twitter:card"]', { name: 'twitter:card', content: 'summary_large_image' });
   upsertMeta(document, 'meta[name="twitter:title"]', { name: 'twitter:title', content: copy.title });
   upsertMeta(document, 'meta[name="twitter:description"]', { name: 'twitter:description', content: copy.description });
+
+  injectIcons(document);
 }
 
 // JSON-LD: LegalService identifica al despacho en todas las páginas y WebPage describe la

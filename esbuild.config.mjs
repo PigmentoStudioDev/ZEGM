@@ -11,6 +11,10 @@ const dev = watch || serve;
 // en dist/assets), así que las fuentes deben vivir junto al CSS en dist/assets/fonts.
 if (existsSync('src/fonts')) cpSync('src/fonts', 'dist/assets/fonts', { recursive: true });
 
+// Estáticos de raíz (favicons + webmanifest): se sirven desde / en el deploy. El host que
+// monta el bundle controla su propio <head>, así que esto aplica al sitio en Vercel.
+if (existsSync('public')) cpSync('public', 'dist', { recursive: true });
+
 const shared = {
   bundle: true,
   format: 'esm',
