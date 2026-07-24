@@ -1,12 +1,48 @@
-// title/description por página+idioma. El host (Elementor) puede no diferenciar el
-// <head> por ?page=/data-aa-page (las 5 páginas comparten el mismo bundle) — src/ui/seo.ts
-// los aplica en runtime como piso mínimo. No reemplaza SEO del host (canonical, OG,
-// robots.txt, sitemap.xml, hreflang) — eso sigue siendo responsabilidad del CMS.
+// title/description por página+idioma, más los datos que el prerender necesita para el
+// canonical y el sitemap.
+//
+// Estos metadatos se aplican en DOS momentos, desde esta única fuente:
+//   - en build, horneados en el <head> de cada HTML (prerender.mjs) — lo único que ven los
+//     crawlers que no ejecutan JavaScript, o sea todos los de IA;
+//   - en runtime (src/ui/seo.ts), como respaldo si el bundle se monta en un host que sirve
+//     su propio <head>, p. ej. Elementor con las 5 páginas compartiendo el mismo HTML.
 import type { Lang, Page } from '../core/types';
+import { FOOTER } from './content';
 
 export interface SeoCopy {
   title: string;
   description: string;
+}
+
+// Dominio público. Hoy el sitio solo vive en el deploy de Vercel; cuando exista el dominio
+// definitivo se cambia aquí y el canonical y el sitemap lo siguen solos.
+export const SITE_ORIGIN = 'https://zegm.vercel.app';
+
+export const PAGE_PATHS: Record<Page, string> = {
+  home: '/',
+  nosotros: '/nosotros',
+  areas: '/areas',
+  acerca: '/acerca',
+  contacto: '/contacto',
+};
+
+// Reusa los mismos datos de contacto que el footer — nunca duplicar la fuente de verdad.
+// Vive aquí (y no en ui/seo.ts) para que el prerender pueda importarlo sin arrastrar DOM.
+export function legalServiceSchema(lang: Lang): Record<string, unknown> {
+  const f = FOOTER[lang];
+  return {
+    '@type': 'LegalService',
+    name: f.brand,
+    description: f.addressLead,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: f.addressLines[1] ?? f.addressLines[0],
+      addressLocality: 'Ciudad de México',
+      addressCountry: 'MX',
+    },
+    telephone: f.phones,
+    email: f.email,
+  };
 }
 
 export const SEO: Record<Page, Record<Lang, SeoCopy>> = {

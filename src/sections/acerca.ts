@@ -220,5 +220,7 @@ export function renderAcerca(root: HTMLElement, lang: Lang): void {
   section.append(inner);
   root.append(section);
 
-  void loadTeam(teamGrid);
+  // Solo en navegador: durante el prerender (Node) no hay a quién animar y un fetch al Sheet
+  // colgaría el build. El grid queda vacío en el HTML estático y se puebla al montar.
+  if (typeof window !== 'undefined') void loadTeam(teamGrid);
 }

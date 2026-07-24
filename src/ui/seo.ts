@@ -4,8 +4,7 @@
 // si se inyecta por JS — eso necesita URLs por idioma reales a nivel de host, fuera del
 // alcance de este bundle).
 import type { Lang, Page } from '../core/types';
-import { SEO } from '../constants/seo';
-import { FOOTER } from '../constants/content';
+import { SEO, legalServiceSchema } from '../constants/seo';
 
 function upsertDescription(content: string): void {
   let tag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
@@ -28,28 +27,9 @@ function upsertJsonLd(id: string, data: Record<string, unknown>): void {
   tag.textContent = JSON.stringify(data);
 }
 
-// Reusa los mismos datos de contacto que el footer — nunca duplicar la fuente de verdad.
-function legalServiceSchema(lang: Lang): Record<string, unknown> {
-  const f = FOOTER[lang];
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'LegalService',
-    name: f.brand,
-    description: f.addressLead,
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: f.addressLines[1] ?? f.addressLines[0],
-      addressLocality: 'Ciudad de México',
-      addressCountry: 'MX',
-    },
-    telephone: f.phones,
-    email: f.email,
-  };
-}
-
 export function applySeo(page: Page, lang: Lang): void {
   const copy = SEO[page][lang];
   document.title = copy.title;
   upsertDescription(copy.description);
-  upsertJsonLd('legal-service', legalServiceSchema(lang));
+  upsertJsonLd('legal-service', { '@context': 'https://schema.org', ...legalServiceSchema(lang) });
 }

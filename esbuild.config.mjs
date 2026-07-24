@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild';
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, dirname } from 'node:path';
+import { createPrerenderer } from './prerender.mjs';
 
 const watch = process.argv.includes('--watch');
 const serve = process.argv.includes('--serve');
@@ -76,23 +77,37 @@ function writeLoader(js, css) {
 
 // Copia las páginas de preview al deploy (dist/), sirviendo de demo hosteada y, en dev, de páginas
 // que abre el server (servedir: dist). Cargan el loader mismo-origen (./loader.js).
-//
-// El mapa de contacto necesita un token público (pk.) de Mapbox. NO se hornea en el repo: en el
-// deploy se inyecta desde la env MAPBOX_TOKEN en TODOS los mounts (el navbar navega con ?page=
-// sobre cualquier HTML base, así que el token debe estar en cada página). Sin token, el mapa
-// degrada en silencio.
-function copyPreview() {
-  const pages = ['index', 'nosotros', 'areas', 'acerca', 'contacto'];
-  const token = process.env.MAPBOX_TOKEN;
+// `file` es el nombre en preview/ y en dist; `page` la página del bundle que se hornea dentro
+// de su div de montaje (ver prerender.mjs).
+const PREVIEW_PAGES = [
+  { file: 'index', page: 'home' },
+  { file: 'nosotros', page: 'nosotros' },
+  { file: 'areas', page: 'areas' },
+  { file: 'acerca', page: 'acerca' },
+  { file: 'contacto', page: 'contacto' },
+];
+
+// Estáticos que van al deploy respetando su ruta, sin prerender (no montan el bundle). Con
+// cleanUrls de Vercel (vercel.json), docs/how-to-install.html queda en /docs/how-to-install.
+const STATIC_PAGES = ['docs/how-to-install.html'];
+
+async function copyPreview() {
+  const { prerender, robots, sitemap } = await createPrerenderer();
   mkdirSync('dist', { recursive: true });
-  for (const page of pages) {
-    let html = readFileSync(`preview/${page}.html`, 'utf8');
-    if (token) {
-      html = html.replaceAll('data-aa-mount', `data-aa-mount data-aa-mapbox-token="${token}"`);
-    }
-    writeFileSync(`dist/${page}.html`, html);
+
+  for (const { file, page } of PREVIEW_PAGES) {
+    const html = readFileSync(`preview/${file}.html`, 'utf8');
+    writeFileSync(`dist/${file}.html`, prerender(html, { page, lang: 'es', theme: 'light' }));
   }
-  if (!token && !dev) console.log('[preview] Sin MAPBOX_TOKEN: el mapa de contacto quedará vacío.');
+
+  for (const page of STATIC_PAGES) {
+    const dest = `dist/${page}`;
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, readFileSync(page, 'utf8'));
+  }
+
+  writeFileSync('dist/robots.txt', robots);
+  writeFileSync('dist/sitemap.xml', sitemap);
 }
 
 // Con metafile, toma el nombre hasheado del ENTRY output de la extensión pedida (ignora .map y
@@ -108,7 +123,7 @@ if (dev) {
   const cssCtx = await esbuild.context(cssOptions);
   await Promise.all([jsCtx.watch(), cssCtx.watch()]);
   writeLoader('landing.js', 'styles.css');
-  copyPreview();
+  await copyPreview();
   if (serve) {
     const { host, port } = await jsCtx.serve({ servedir: 'dist', port: Number(process.env.PORT) || 8770 });
     console.log(`dev server: http://${host}:${port}/`);
@@ -121,5 +136,5 @@ if (dev) {
     esbuild.build(cssOptions),
   ]);
   writeLoader(entryOut(jsResult.metafile, '.js'), entryOut(cssResult.metafile, '.css'));
-  copyPreview();
+  await copyPreview();
 }

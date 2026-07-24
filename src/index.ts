@@ -3,21 +3,10 @@
 //   <script data-cfasync="false" src="https://<proyecto>.vercel.app/loader.js"></script>
 
 import { type Theme, type Lang, type Page, PAGES } from './core/types';
-import { AREAS } from './constants/content';
+import { renderPage } from './render';
 import { initMotion } from './ui/motion';
-import { renderNavbar } from './sections/navbar';
 import { initNavbar } from './ui/navbar';
 import { initNavMobile } from './ui/nav-mobile';
-import { renderLoader } from './sections/loader';
-import { renderAbout } from './sections/about';
-import { renderQuote } from './sections/quote';
-import { renderServices } from './sections/services';
-import { renderContact } from './sections/contact';
-import { renderPageHeading } from './sections/page-heading';
-import { renderPracticeAreas } from './sections/practice-areas';
-import { renderNosotrosRows } from './sections/nosotros-rows';
-import { renderAcerca } from './sections/acerca';
-import { renderFooter } from './sections/footer';
 import { initSplitText } from './ui/split-text';
 import { watchLayoutShifts } from './ui/scroll-refresh';
 import { initRevealGroup } from './ui/reveal-group';
@@ -76,30 +65,6 @@ function shouldPlayLoaderOverlay(): boolean {
   }
 }
 
-// Composición del home: hero (siempre) + overlay del loader (solo primer mount) +
-// secciones. Cada entrada del registro recibe (root, lang) y encadena sus renders.
-function renderHome(root: HTMLElement, lang: Lang): void {
-  renderLoader(root, lang, shouldPlayLoaderOverlay());
-  renderAbout(root, lang);
-  renderQuote(root, lang);
-  renderServices(root, lang);
-}
-
-function renderAreas(root: HTMLElement, lang: Lang): void {
-  renderPageHeading(root, AREAS[lang], 'areas');
-  renderPracticeAreas(root, lang);
-}
-
-// Registro página → render. Reemplaza la escalera if/else: agregar una página es una
-// entrada más y TypeScript exige cubrir todas las claves de Page (exhaustividad).
-const PAGE_RENDERERS: Record<Page, (root: HTMLElement, lang: Lang) => void> = {
-  home: renderHome,
-  nosotros: renderNosotrosRows,
-  areas: renderAreas,
-  acerca: renderAcerca,
-  contacto: renderContact,
-};
-
 function boot(): void {
   // Navegación fresca: no restaurar scroll ni honrar un #anchor de otra página en el
   // page-load — cada página monta desde el top. Así el navbar (que se muestra en el top)
@@ -122,17 +87,9 @@ function boot(): void {
     // <head> por página (las 5 páginas comparten el mismo bundle).
     applySeo(page, lang);
 
-    // Root wrapper — todo el CSS está scopeado a .aa-landing
-    const root = document.createElement('div');
-    root.className = 'aa-landing';
-    root.setAttribute('data-aa-theme', theme);
-    root.setAttribute('data-aa-lang', lang);
-
-    // Fase de render: el navbar y el footer son comunes; en medio, las secciones de
-    // cada página resueltas por el registro (PAGE_RENDERERS).
-    renderNavbar(root, lang, page);
-    PAGE_RENDERERS[page](root, lang);
-    renderFooter(root, lang, page);
+    // Fase de render (src/render.ts): el mismo módulo que usa el prerender, así el DOM del
+    // cliente y el del HTML estático no pueden divergir. El overlay del loader solo aquí.
+    const root = renderPage(page, lang, theme, page === 'home' && shouldPlayLoaderOverlay());
 
     mount.replaceChildren(root);
     window.scrollTo(0, 0); // top garantizado antes de la fase de init (Lenis + navbar)

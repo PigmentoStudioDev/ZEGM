@@ -30,6 +30,11 @@ export function initRevealGroup(root: HTMLElement): void {
 // contenido inyectado async (p. ej. el grid de equipo tras el fetch al Sheet), sin
 // depender de que el elemento existiera en el DOM al momento del boot.
 export function revealGroup(groupEl: HTMLElement): void {
+    // Sin navegador (prerender en Node) no hay animación que preparar. Salir antes de tocar
+    // GSAP evita el registro de plugins y, sobre todo, evita hornear autoAlpha:0 en el HTML:
+    // contenido oculto es peor que ausente para un crawler.
+    if (typeof window === 'undefined') return;
+
     const groupStaggerSec = (parseFloat(groupEl.getAttribute('data-stagger') || '100')) / 1000;
     const groupDistance = groupEl.getAttribute('data-distance') || '2em';
     // clamp(): mismo motivo que en motion.ts/split-text.ts — evita un offset inválido
