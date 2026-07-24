@@ -21,9 +21,3 @@ El build (`esbuild.config.mjs`) copia estas páginas a `dist/` en cada `npm run 
 - El navbar del sitio navega con `?page=`; también funciona (el `?page=` de la URL tiene prioridad
   sobre el `data-aa-page` del mount).
 
-## Mapa de contacto (Mapbox)
-
-`/contacto` necesita un token público (`pk.`) de Mapbox. **No se hornea en el repo**: el build lo
-inyecta en el atributo `data-aa-mapbox-token` de todos los mounts desde la env `MAPBOX_TOKEN`
-(Project → Settings → Environment Variables en Vercel). Sin token, la página carga pero el mapa
-queda vacío (degrada en silencio). En local puedes pasarlo con `?mbtoken=pk.…`.

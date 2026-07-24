@@ -68,8 +68,10 @@ PORT=8770 npm run dev
 - El build emite `dist/assets/landing.[hash].{js,css}` (+ chunks) y **genera** `dist/loader.js`
   con esos nombres ya resueltos + auto-localizado (`document.currentScript`). Assets inmutables;
   `loader.js` cachea 5 min (`vercel.json`). Cero tags, cero CI, cero purga.
-- El build copia las 5 páginas de preview a `dist/` (demo hosteada) e inyecta el token de Mapbox
-  desde la env `MAPBOX_TOKEN` en el deploy. Configurar esa env en el proyecto Vercel.
+- El build prerenderiza las 5 páginas de preview a `dist/` (`prerender.mjs`): ejecuta la fase
+  de render en Node con linkedom y hornea el DOM dentro del div de montaje, más `<head>`
+  (title/description/canonical/OG), JSON-LD, `robots.txt` y `sitemap.xml`. Los `initX()` NO
+  corren: aplicarían `autoAlpha: 0` y serializarían el contenido oculto.
 - `dist/` está gitignoreado (lo construye Vercel). No editar `loader.js` a mano: es generado.
 - Embed en el host: `<script src="https://<proyecto>.vercel.app/loader.js" data-cfasync="false">`.
 
